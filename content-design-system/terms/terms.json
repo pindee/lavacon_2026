@@ -1,0 +1,8 @@
+[
+  { "avoid": "log in", "use": "sign in", "notes": "Example from a style guide. Replace with your own." },
+  { "avoid": "utilize", "use": "use" },
+  { "avoid": "blacklist", "use": "deny list" },
+  { "avoid": "whitelist", "use": "allow list" },
+  { "avoid": "grandfathered", "use": "legacy" },
+  { "avoid": "enable", "use": "turn on", "notes": "Example only. Check your own accessibility guidance." }
+]

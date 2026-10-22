@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font: 13px/1.4 system-ui, sans-serif; margin: 12px; }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  .meta { color: #666; margin-bottom: 12px; }
+  .item { border: 1px solid #ddd; border-radius: 6px; padding: 8px; margin-bottom: 8px; cursor: pointer; }
+  .item.ok { border-color: #bfe3c3; }
+  .text { font-style: italic; margin-bottom: 4px; }
+  .issue { color: #a1260d; }
+  .pass { color: #1b6e2b; }
+  #error { color: #a1260d; }
+</style>
+</head>
+<body>
+  <h1>Content Design Review</h1>
+  <div class="meta" id="meta">Loading rules…</div>
+  <div id="error"></div>
+  <div id="results"><p>Select text or a frame to review.</p></div>
+
+<script>
+// Set this to the address where your pipeline publishes rules.json.
+const RULES_URL = "https://[YOUR_ORG].github.io/[YOUR_REPO]/rules.json";
+
+let rules = null;
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function checkText(text) {
+  const issues = [];
+  if (!rules) return issues;
+
+  for (const t of rules.terms) {
+    const re = new RegExp("\\b" + t.avoid + "\\b", t.case_sensitive ? "" : "i");
+    if (re.test(text)) issues.push(`Use "${t.use}" instead of "${t.avoid}".` + (t.notes ? " " + t.notes : ""));
+  }
+  for (const b of rules.checks.banned_patterns || []) {
+    if (new RegExp(b.pattern, b.flags || "").test(text)) issues.push(b.message);
+  }
+  const max = rules.checks.max_sentence_words;
+  if (max) {
+    text.split(/(?<=[.!?])\s+/).forEach(s => {
+      const words = s.trim().split(/\s+/).filter(Boolean).length;
+      if (words > max) issues.push(`A sentence has ${words} words. Keep sentences to ${max} or fewer.`);
+    });
+  }
+  return issues;
+}
+
+function render(items) {
+  const el = document.getElementById("results");
+  if (!items.length) { el.innerHTML = "<p>Select text or a frame to review.</p>"; return; }
+  el.innerHTML = items.map(item => {
+    const issues = checkText(item.text);
+    return `<div class="item ${issues.length ? "" : "ok"}" data-id="${esc(item.id)}">
+      <div class="text">${esc(item.text)}</div>
+      ${issues.length ? issues.map(i => `<div class="issue">• ${esc(i)}</div>`).join("") : '<div class="pass">No issues found.</div>'}
+    </div>`;
+  }).join("");
+  el.querySelectorAll(".item").forEach(n =>
+    n.addEventListener("click", () => parent.postMessage({ pluginMessage: { type: "select", id: n.dataset.id } }, "*")));
+}
+
+let lastItems = [];
+window.onmessage = (event) => {
+  const msg = event.data.pluginMessage;
+  if (msg && msg.type === "selection") { lastItems = msg.items; render(lastItems); }
+};
+
+fetch(RULES_URL)
+  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+  .then(json => {
+    rules = json;
+    document.getElementById("meta").textContent = "Standards version " + json.version;
+    render(lastItems);
+  })
+  .catch(e => { document.getElementById("error").textContent = "Could not load rules: " + e.message; });
+
+parent.postMessage({ pluginMessage: { type: "ready" } }, "*");
+</script>
+</body>
+</html>

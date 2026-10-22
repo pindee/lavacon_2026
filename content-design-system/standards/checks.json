@@ -1,0 +1,8 @@
+{
+  "max_sentence_words": 25,
+  "banned_patterns": [
+    { "pattern": "&", "message": "Spell out \"and\" instead of using an ampersand." },
+    { "pattern": "\\bplease\\b", "message": "Avoid \"please\" unless it is truly needed.", "flags": "i" },
+    { "pattern": "\\bclick here\\b", "message": "Use descriptive link text instead of \"click here\".", "flags": "i" }
+  ]
+}
